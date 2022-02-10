@@ -1,0 +1,10 @@
+{
+  "name": "Frame Styles",
+  "id": "1071171665252498492",
+  "api": "1.0.0",
+  "editorType": [
+    "figma"
+  ],
+  "main": "dist/code.js",
+  "ui": "dist/ui.html"
+}

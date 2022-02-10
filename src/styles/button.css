@@ -1,0 +1,25 @@
+button {
+  @apply rounded
+    h-7
+    px-1.5
+    flex items-center justify-center
+    text-xs
+    bg-gray-100 text-gray-500;
+}
+
+button:hover {
+  @apply bg-gray-200 text-gray-600;
+}
+
+button:disabled {
+  @apply opacity-20
+    pointer-events-none;
+}
+
+button.primary {
+  @apply bg-sky-500;
+}
+
+button.primary:hover {
+  @apply bg-sky-600;
+}

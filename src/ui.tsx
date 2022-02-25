@@ -4,13 +4,26 @@ import * as React from "react"
 import * as ReactDOM from "react-dom"
 import { v4 as uuid } from "uuid"
 import { ReactSortable } from "react-sortablejs"
-
 import { Menu, Plus, Trash, CornerRightDown } from "react-feather";
+import { throttle } from "lodash"
+
+import { StyleSample } from "./styleSample"
 
 type SelectionType = "SINGLE" | "MULTIPLE" | "EMPTY" |"INVALID"
 
-const ListItem = ({ item, onDelete, canApply, canUpdate }) => {
+const ListItem = ({ item, onDelete, onApply, onRename, canApply, canUpdate }) => {
+  const [name, setName] = React.useState<string>(item.name)
   const handleDelete = () => onDelete(item.id)
+  const handleApply = () => onApply(item.id)
+
+  const handleRename = React.useMemo(() => throttle((newName) => {
+    onRename(item.id, newName)
+  }, 500),[])
+
+  const handleChange = (e) => {
+    setName(e.target.value)
+    handleRename(e.target.value)
+  }
 
   return (
     <li className="flex items-center justify-between p-1">
@@ -18,15 +31,19 @@ const ListItem = ({ item, onDelete, canApply, canUpdate }) => {
         <button className="mr-1 w-6 opacity-20 hover:opacity-100">
           <Menu size={12} />
         </button>
-        <div className="mr-1 w-7 h-7 bg-red-300"></div>
+
+        <StyleSample styles={item.styles}/>
+
         <input
           type="text"
+          value={name}
+          onChange={handleChange}
           className="grow h-7 mr-1 px-1.5 rounded text-xs font-bold hover:text-sky-500 border-transparent hover:border-sky-500 focus:ring-sky-500"
-          defaultValue={item.name} />
+        />
       </div>
 
       <div className="flex space-x-1">
-        <button disabled={!canApply} title="Apply style to current selection">
+        <button onClick={handleApply} disabled={!canApply} title="Apply style to current selection">
           Apply
         </button>
 
@@ -45,7 +62,7 @@ const ListItem = ({ item, onDelete, canApply, canUpdate }) => {
 const App = () => {
   const [items, setItems] = React.useState<any[]>([])
   const [selection, setSelection] = React.useState<SelectionType>("INVALID")
-  const [selectedNode, setSelectedNode] = React.useState<any>(null)
+  // const [selectedNode, setSelectedNode] = React.useState<any>(null)
 
   // Send messages
 
@@ -63,8 +80,23 @@ const App = () => {
     }}, '*')
   }
 
+  const handleApplyStyle = (id:string) => {
+    parent.postMessage({ pluginMessage: {
+      type: "apply-style",
+      id: id,
+    }}, '*')
+  }
+
+  const handleRenameStyle = (id:string, name: string) => {
+    parent.postMessage({ pluginMessage: {
+      type: "rename-style",
+      id: id,
+      name: name,
+    }}, '*')
+    return true
+  }
+
   const handleSortItems = (sortedItems) => {
-    console.log("sorting...")
     setItems(sortedItems)
     parent.postMessage({ pluginMessage: {
       type: "reorder-styles",
@@ -95,21 +127,26 @@ const App = () => {
           setItems(message.value)
           break
 
+        case "renamed-style":
+          console.log(" -- renamed style", message.value)
+          setItems(message.value)
+          break
+
         case "single-selection":
           console.log(" -- single selection", message.value)
-          setSelectedNode(message.value)
+          // setSelectedNode(message.value)
           setSelection("SINGLE")
           break
 
         case "multi-selection":
           console.log(" -- multi selection")
-          setSelectedNode(null)
+          // setSelectedNode(null)
           setSelection("MULTIPLE")
           break
 
         case "invalid-selection":
           console.log(" -- invalid selection")
-          setSelectedNode(null)
+          // setSelectedNode(null)
           setSelection("INVALID")
           break
 
@@ -130,7 +167,9 @@ const App = () => {
               key={item.id}
               item={item}
               onDelete={handleDeleteStyle}
-              canApply={selection !== "INVALID"}
+              onApply={handleApplyStyle}
+              onRename={handleRenameStyle}
+              canApply={selection === "SINGLE" || selection === "MULTIPLE"}
               canUpdate={selection === "SINGLE"}
             />
           )

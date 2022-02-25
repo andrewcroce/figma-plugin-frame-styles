@@ -23,3 +23,7 @@ button.primary {
 button.primary:hover {
   @apply bg-sky-600;
 }
+
+.test {
+  background: rgb(100, 20, 20), rgba(100, 0, 0, 0.20000000298023224);
+}

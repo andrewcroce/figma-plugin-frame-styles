@@ -1,3 +1,5 @@
+import { styleKeys } from "./styleKeys"
+
 const postSelectionType = (selection) => {
   switch (true) {
 
@@ -8,16 +10,7 @@ const postSelectionType = (selection) => {
         type: "single-selection",
         value: {
           name: node.name,
-          styles: {
-            fills: node.fills,
-            strokes: node.strokes,
-            topLeftRadius: node.topLeftRadius,
-            topRightRadius: node.topRightRadius,
-            bottomLeftRadius: node.bottomLeftRadius,
-            bottomRightRadius: node.bottomRightRadius,
-            effects: node.effects,
-            blendMode: node.blendMode,
-          }
+          styles: Object.assign(styleKeys.map(key => ({ [key]: node[key] })))
         }
       })
       break
@@ -53,11 +46,19 @@ figma.showUI(__html__, {
 let data:any[] = []
 const rawData = figma.root.getPluginData("styles")
 
+// console.log("RAW DATA", rawData)
+
 if (rawData !== "") {
   data = JSON.parse(rawData)
+  // console.log("PARSED DATA", data)
 }
 
 postSelectionType(figma.currentPage.selection)
+
+figma.ui.postMessage({
+  type: "initialize",
+  value: data
+})
 
 figma.on("selectionchange", () => postSelectionType(figma.currentPage.selection))
 
@@ -69,16 +70,11 @@ figma.ui.onmessage = msg => {
       const item = {
         name: selection[0].name,
         id: msg.id,
-        styles: {
-          fills: selection[0].fills,
-          strokes: selection[0].strokes,
-          topLeftRadius: selection[0].topLeftRadius,
-          topRightRadius: selection[0].topRightRadius,
-          bottomLeftRadius: selection[0].bottomLeftRadius,
-          bottomRightRadius: selection[0].bottomRightRadius,
-          effects: selection[0].effects,
-          blendMode: selection[0].blendMode,
-        }
+        styles: styleKeys.reduce((obj, key) => (
+          Object.assign(obj, {
+            [key]: selection[0][key]
+          })
+        ), {})
       }
 
       data.push(item)
@@ -101,6 +97,31 @@ figma.ui.onmessage = msg => {
 
     figma.ui.postMessage({
       type: "deleted-style",
+      value: data,
+    })
+  }
+
+  if (msg.type === "apply-style") {
+    const selections = figma.currentPage.selection
+    const s = data.find((style) => style.id === msg.id)
+
+    selections.forEach((selection) => {
+      if (selection.type !== "FRAME") {
+        throw new Error("Styles can only be applied to frames")
+      } else {
+        styleKeys.forEach((key) => { selection[key] = s.styles[key] })
+        selection.setPluginData("styleId", s.id)
+      }
+    })
+  }
+
+  if (msg.type === "rename-style") {
+    const i = data.findIndex((style) => style.id === msg.id)
+    data[i].name = msg.name
+    figma.root.setPluginData("styles", JSON.stringify(data))
+
+    figma.ui.postMessage({
+      type: "renamed-style",
       value: data,
     })
   }
